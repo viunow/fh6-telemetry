@@ -1,0 +1,17 @@
+{
+  "name": "fh6-telemetry",
+  "version": "1.0.0",
+  "description": "Forza Horizon 6 UDP Telemetry Capture",
+  "main": "src/parser.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "capture": "node src/index.js"
+  },
+  "keywords": ["forza", "telemetry", "udp"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dgram": "latest"
+  }
+}
