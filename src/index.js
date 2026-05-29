@@ -26,6 +26,14 @@ let lastClosedSessionData = null;
 
 let sseClients = new Set();
 
+// Diagnostics
+let diagPacketsTotal = 0;
+let diagParseErrors = 0;
+let diagLastParseError = null;
+let diagLastPacketMs = null;
+let diagLastParseErrorMs = null;
+let diagParseErrLogCooldown = 0;
+
 function ensureOutputDir() {
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -37,6 +45,7 @@ function getTimestamp() {
 }
 
 function broadcastToSSE(data) {
+  diagLastPacketMs = Date.now();
   const message = `data: ${JSON.stringify(data)}\n\n`;
   for (const client of sseClients) {
     try {
@@ -443,6 +452,7 @@ async function startUDP() {
     const CLOSE_GRACE = 150;
 
     server.on("message", (msg, rinfo) => {
+      diagPacketsTotal++;
       try {
         const pkt = parse(msg);
         const json = handlePacket(pkt);
@@ -467,7 +477,17 @@ async function startUDP() {
         );
         prevInEvent = inEvent;
       } catch (err) {
-        // silent - ignore malformed packets
+        diagParseErrors++;
+        diagLastParseError = err.message;
+        diagLastParseErrorMs = Date.now();
+        if (diagParseErrLogCooldown <= 0) {
+          console.error(
+            `[udp] parse error (${msg.length}B from ${rinfo.address}:${rinfo.port}): ${err.message}`,
+          );
+          diagParseErrLogCooldown = 60;
+        } else {
+          diagParseErrLogCooldown--;
+        }
       }
     });
 
@@ -659,6 +679,36 @@ async function startHTTP() {
       return;
     }
 
+    if (req.url === "/debug") {
+      const now = Date.now();
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify(
+          {
+            udpPort: PORT,
+            httpPort: HTTP_PORT,
+            packetsTotal: diagPacketsTotal,
+            parseErrors: diagParseErrors,
+            lastParseError: diagLastParseError,
+            lastParseErrorAgoMs: diagLastParseErrorMs
+              ? now - diagLastParseErrorMs
+              : null,
+            lastPacketAgoMs: diagLastPacketMs ? now - diagLastPacketMs : null,
+            lastPacketMs: diagLastPacketMs,
+            sseClients: sseClients.size,
+            sessionActive: currentSession !== null,
+            sessionId: currentSession?.id || null,
+            currentSessionPackets: currentSessionPackets.length,
+            currentSessionLaps: currentSessionLaps.length,
+            uptimeMs: process.uptime() * 1000,
+          },
+          null,
+          2,
+        ),
+      );
+      return;
+    }
+
     if (req.url === "/sessions") {
       ensureOutputDir();
       try {
@@ -843,8 +893,10 @@ function getDefaultHTML() {
       gap: 6px;
     }
     #status.active { color: #27AE60; }
+    #status.sse-error { color: #E74C3C; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: #2A2A2A; flex-shrink: 0; }
     .dot.active { background: #27AE60; box-shadow: 0 0 6px #27AE60; }
+    .dot.error { background: #E74C3C; box-shadow: 0 0 6px #E74C3C; }
 
     .main { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; min-height: 0; }
     .left-col, .right-col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
@@ -1131,6 +1183,7 @@ function getDefaultHTML() {
     <button id="export-btn" class="btn btn-primary" disabled>Export</button>
     <button id="export-compact-btn" class="btn btn-primary" disabled style="background:#1A6B35;">Compact</button>
     <div id="status"><span class="dot" id="status-dot"></span>Waiting</div>
+    <div id="no-data-warn" style="display:none;font-size:10px;color:#F39C12;letter-spacing:1px;text-transform:uppercase;margin-left:8px;">No UDP data</div>
   </div>
 </div>
 
@@ -1688,9 +1741,54 @@ function getDefaultHTML() {
     }, 100);
   }
 
+  // ── SSE connection with error handling and watchdog ──────────────
+  var lastSseDataMs = null;
+  var noDataWarnTimer = null;
+  var sseReconnectTimer = null;
+  var NO_DATA_TIMEOUT_MS = 8000;
+
+  function connectSSE() {
+    if (window._es) { try { window._es.close(); } catch(e) {} }
+    var es = new EventSource('/events');
+    window._es = es;
+
+    es.onerror = function() {
+      var st = document.getElementById('status');
+      st.className = 'sse-error';
+      st.innerHTML = '<span class="dot error" id="status-dot"></span>SSE Disconnected';
+      clearTimeout(sseReconnectTimer);
+      sseReconnectTimer = setTimeout(function() { connectSSE(); }, 3000);
+    };
+
+    es.onopen = function() {
+      var st = document.getElementById('status');
+      if (st.classList.contains('sse-error')) {
+        st.className = '';
+        st.innerHTML = '<span class="dot" id="status-dot"></span>Waiting';
+      }
+    };
+
+    es.onmessage = handleSSEMessage;
+    return es;
+  }
+
+  function checkNoData() {
+    var warn = document.getElementById('no-data-warn');
+    if (!lastSseDataMs || Date.now() - lastSseDataMs > NO_DATA_TIMEOUT_MS) {
+      if (warn) warn.style.display = 'block';
+    } else {
+      if (warn) warn.style.display = 'none';
+    }
+  }
+
+  noDataWarnTimer = setInterval(checkNoData, 2000);
+
   // ── Hook minimap into SSE ─────────────────────────────────────────
-  es = new EventSource('/events');
-  es.onmessage = function(e) {
+  connectSSE();
+
+  function handleSSEMessage(e) {
+    lastSseDataMs = Date.now();
+    document.getElementById('no-data-warn').style.display = 'none';
     var d = JSON.parse(e.data);
 
     if (d.sessionId && d.sessionId !== sessionId) {
@@ -1748,7 +1846,7 @@ function getDefaultHTML() {
     if (d.completedLap)             setText('lap-best', 'BEST  ' + fmt(d.completedLap.lapTime * 1000));
 
     updateMapTrail(d);
-  };
+  }
 
   document.getElementById('export-btn').addEventListener('click', function() {
     downloadExport('/export', 'Export', 'session_' + sessionId + '.json');
@@ -1770,7 +1868,7 @@ function getDefaultHTML() {
     }).finally(function() {
       btns.forEach(function(b) { if (b) b.disabled = false; });
     });
-  });
+  }
 </script>
 
 <div class="footer">
