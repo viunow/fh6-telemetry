@@ -796,8 +796,13 @@ function getDefaultHTML() {
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: #0A0A0A;
       color: #fff;
-      min-height: 100vh;
-      padding: 12px;
+      height: 100vh;
+      overflow: hidden;
+      padding: 10px 12px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
       background-image:
         repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.008) 3px, rgba(255,255,255,0.008) 4px),
         repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(255,255,255,0.008) 3px, rgba(255,255,255,0.008) 4px);
@@ -811,7 +816,22 @@ function getDefaultHTML() {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      gap: 16px;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    .header-center {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    #session-info {
+      font-size: 11px;
+      color: #ccc;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      white-space: nowrap;
     }
     #status {
       font-size: 11px;
@@ -826,7 +846,11 @@ function getDefaultHTML() {
     .dot { width: 7px; height: 7px; border-radius: 50%; background: #2A2A2A; flex-shrink: 0; }
     .dot.active { background: #27AE60; box-shadow: 0 0 6px #27AE60; }
 
-    .main { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    .main { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; min-height: 0; }
+    .left-col, .right-col { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+    .left-col > .card:first-child { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .minimap-card { flex: 1; min-height: 0; margin-bottom: 0; display: flex; flex-direction: column; }
 
     .card {
       background: #111;
@@ -968,11 +992,6 @@ function getDefaultHTML() {
     }
 
     /* SESSION */
-    .session-bar {
-      display: flex; align-items: center;
-      justify-content: space-between;
-    }
-    #session-info { font-size: 11px; color: #ccc; text-transform: uppercase; letter-spacing: 1.5px; }
     .btn {
       padding: 7px 18px; border-radius: 4px;
       font-size: 10px; font-weight: 700; cursor: pointer;
@@ -999,8 +1018,15 @@ function getDefaultHTML() {
     }
 
     /* MINIMAP */
-    .minimap-card { margin-bottom: 12px; }
-    #minimap-canvas { width: 100%; border-radius: 6px; background: #0D0D0D; border: 1px solid #1A1A1A; }
+    #minimap-canvas {
+      display: block;
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      border-radius: 6px;
+      background: #0D0D0D;
+      border: 1px solid #1A1A1A;
+    }
 
     /* OVERLAYS */
     .overlay {
@@ -1087,198 +1113,206 @@ function getDefaultHTML() {
 <body>
 
 <div class="header">
-  <div style="display:flex;align-items:center;gap:12px;">
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 866.7 388.2" style="height:28px;display:block;" aria-label="Forza">
-    <path fill="#ffffff" d="M397.4,279.9l113-17.1l85-126.4H472.8c-0.5,0-0.7,0.4-0.3,0.7c0.2,0.1,0.5,0.3,0.5,0.3c5.1,2.4,13.5,10-2.5,33.8L397.4,279.9z"/>
-    <path fill="#ffffff" d="M618.4,136.5H604c-0.5,0-0.7,0.4-0.3,0.7c0.2,0.1,0.5,0.3,0.5,0.3c5.1,2.4,13.5,10-2.5,33.8l-57.9,86l-0.3,0.5l76.1-11.6c8.1-1.4,15.3-3.6,21.7-7.1c21.3-11.6,35.6-28.9,48.8-48.4l36.5-54.3H618.4V136.5z"/>
-    <path fill="#ffffff" d="M251.2,302l113.1-17.1l99.9-148.5H12c-2.2,0-3.6,0.8-3.6,2.5c0,1.3,0.9,2.3,3.6,2.7l313.1,50.6L251.2,302z"/>
-    <polygon fill="#ffffff" points="136.8,184.6 0,388.2 182,360.6 283.4,209.9"/>
-    <path fill="#ffffff" d="M399,0h-59.5C296,2,264.3,17.6,238.6,38.3c-19.5,15.7-35.8,35-50.4,55.5l-13.1,19.5h523.3c30.7-1.3,54-7.6,75.3-19.2c34.4-18.6,59.7-45.9,81.3-76.7L866.7,0C861.6,0,399,0,399,0z"/>
-  </svg>
-  <span style="font-size:15px;font-weight:700;color:#fff;letter-spacing:4px;text-transform:uppercase;">TELEMETRY</span>
+  <div class="header-left">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 866.7 388.2" style="height:28px;display:block;" aria-label="Forza">
+      <path fill="#ffffff" d="M397.4,279.9l113-17.1l85-126.4H472.8c-0.5,0-0.7,0.4-0.3,0.7c0.2,0.1,0.5,0.3,0.5,0.3c5.1,2.4,13.5,10-2.5,33.8L397.4,279.9z"/>
+      <path fill="#ffffff" d="M618.4,136.5H604c-0.5,0-0.7,0.4-0.3,0.7c0.2,0.1,0.5,0.3,0.5,0.3c5.1,2.4,13.5,10-2.5,33.8l-57.9,86l-0.3,0.5l76.1-11.6c8.1-1.4,15.3-3.6,21.7-7.1c21.3-11.6,35.6-28.9,48.8-48.4l36.5-54.3H618.4V136.5z"/>
+      <path fill="#ffffff" d="M251.2,302l113.1-17.1l99.9-148.5H12c-2.2,0-3.6,0.8-3.6,2.5c0,1.3,0.9,2.3,3.6,2.7l313.1,50.6L251.2,302z"/>
+      <polygon fill="#ffffff" points="136.8,184.6 0,388.2 182,360.6 283.4,209.9"/>
+      <path fill="#ffffff" d="M399,0h-59.5C296,2,264.3,17.6,238.6,38.3c-19.5,15.7-35.8,35-50.4,55.5l-13.1,19.5h523.3c30.7-1.3,54-7.6,75.3-19.2c34.4-18.6,59.7-45.9,81.3-76.7L866.7,0C861.6,0,399,0,399,0z"/>
+    </svg>
+    <span style="font-size:15px;font-weight:700;color:#fff;letter-spacing:4px;text-transform:uppercase;">TELEMETRY</span>
   </div>
-  <div id="status"><span class="dot" id="status-dot"></span>Waiting for signal</div>
+  <div class="header-center">
+    <div id="session-info">No active session</div>
+  </div>
+  <div class="header-right">
+    <button id="sessions-btn" class="btn btn-secondary">Sessions</button>
+    <button id="export-btn" class="btn btn-primary" disabled>Export</button>
+    <button id="export-compact-btn" class="btn btn-primary" disabled style="background:#1A6B35;">Compact</button>
+    <div id="status"><span class="dot" id="status-dot"></span>Waiting</div>
+  </div>
 </div>
 
 <div class="main">
 
-  <!-- SPEED + INSTRUMENTS -->
-  <div class="card">
-    <div class="card-title">Speed & Engine</div>
+  <!-- LEFT COLUMN: Speed+Engine (grows) + Tire/Inputs row -->
+  <div class="left-col">
 
-    <svg class="speedo-svg" viewBox="0 0 220 155" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="spd-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#E74C3C"/>
-          <stop offset="100%" stop-color="#FF6B35"/>
-        </linearGradient>
-      </defs>
-      <circle cx="110" cy="130" r="95" fill="none" stroke="#1A1A1A" stroke-width="13"
-        stroke-dasharray="447.7 596.9" transform="rotate(135 110 130)"/>
-      <circle id="speed-arc" cx="110" cy="130" r="95" fill="none"
-        stroke="url(#spd-grad)" stroke-width="13" stroke-linecap="round"
-        stroke-dasharray="0 596.9" transform="rotate(135 110 130)"/>
-      <text x="16"  y="140" fill="#aaa" font-size="8" font-family="monospace">0</text>
-      <text x="62"  y="46"  fill="#aaa" font-size="8" font-family="monospace">100</text>
-      <text x="148" y="46"  fill="#aaa" font-size="8" font-family="monospace">250</text>
-      <text x="186" y="140" fill="#aaa" font-size="8" font-family="monospace">350</text>
-      <text id="speed" x="110" y="116" text-anchor="middle"
-        font-size="52" font-weight="900" fill="#fff" font-family="monospace">0</text>
-      <text x="110" y="133" text-anchor="middle"
-        font-size="9" fill="#ccc" letter-spacing="3" font-family="monospace">KM/H</text>
-    </svg>
-
-    <div class="instruments">
-      <div>
-        <div class="instr-label">RPM</div>
-        <svg viewBox="0 0 100 58" style="width:100%;max-width:110px;display:block;margin:0 auto;">
-          <circle cx="50" cy="52" r="40" fill="none" stroke="#1A1A1A" stroke-width="9"
-            stroke-dasharray="125.7 251.3" transform="rotate(180 50 52)"/>
-          <circle id="rpm-bar" cx="50" cy="52" r="40" fill="none" stroke="#E74C3C" stroke-width="9"
-            stroke-linecap="round" stroke-dasharray="0 251.3" transform="rotate(180 50 52)"/>
-          <text id="rpm" x="50" y="46" text-anchor="middle"
-            font-size="13" font-weight="700" fill="#fff" font-family="monospace">0</text>
-          <text x="50" y="56" text-anchor="middle" font-size="6" fill="#ccc" letter-spacing="1" font-family="monospace">RPM</text>
-        </svg>
-      </div>
-      <div>
-        <div class="instr-label">Gear</div>
-        <div class="gear-ring"><span id="gear">N</span></div>
-      </div>
-      <div>
-        <div class="instr-label">Power</div>
-        <svg viewBox="0 0 100 58" style="width:100%;max-width:110px;display:block;margin:0 auto;">
-          <circle cx="50" cy="52" r="40" fill="none" stroke="#1A1A1A" stroke-width="9"
-            stroke-dasharray="125.7 251.3" transform="rotate(180 50 52)"/>
-          <circle id="power-bar" cx="50" cy="52" r="40" fill="none" stroke="#3B82F6" stroke-width="9"
-            stroke-linecap="round" stroke-dasharray="0 251.3" transform="rotate(180 50 52)"/>
-          <text id="power" x="50" y="46" text-anchor="middle"
-            font-size="13" font-weight="700" fill="#fff" font-family="monospace">0</text>
-          <text x="50" y="56" text-anchor="middle" font-size="6" fill="#ccc" letter-spacing="1" font-family="monospace">KW</text>
-        </svg>
-      </div>
-    </div>
-  </div>
-
-  <!-- LAP / RACE INFO -->
-  <div class="card">
-    <div class="card-title">Race Info</div>
-    <div id="lap-time">--:--.---</div>
-    <div id="lap-best">BEST &nbsp;--:--.---</div>
-    <div class="info-grid">
-      <div class="info-item">
-        <span class="info-label">Lap</span>
-        <span id="lap-num" class="info-value">-</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Position</span>
-        <span id="position" class="info-value">-</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Fuel</span>
-        <span id="fuel" class="info-value">-</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Boost</span>
-        <span id="boost" class="info-value">-</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- TIRE TEMPS -->
-  <div class="card">
-    <div class="card-title">Tire Temperature</div>
-    <div class="tire-grid">
-      <div class="tire-slot fl">
-        <span class="tire-lbl">FL</span>
-        <div id="temp-fl-bar" class="tire"></div>
-        <span id="temp-fl" class="tire-val">--</span>
-      </div>
-      <svg class="car-body" viewBox="0 0 56 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="6" y="6" width="44" height="98" rx="10" fill="#1A1A1A" stroke="#2A2A2A" stroke-width="1"/>
-        <rect x="12" y="14" width="32" height="22" rx="4" fill="#141414"/>
-        <rect x="14" y="58" width="28" height="18" rx="3" fill="#141414"/>
+    <div class="card">
+      <div class="card-title">Speed & Engine</div>
+      <svg class="speedo-svg" viewBox="0 0 220 155" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="spd-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#E74C3C"/>
+            <stop offset="100%" stop-color="#FF6B35"/>
+          </linearGradient>
+        </defs>
+        <circle cx="110" cy="130" r="95" fill="none" stroke="#1A1A1A" stroke-width="13"
+          stroke-dasharray="447.7 596.9" transform="rotate(135 110 130)"/>
+        <circle id="speed-arc" cx="110" cy="130" r="95" fill="none"
+          stroke="url(#spd-grad)" stroke-width="13" stroke-linecap="round"
+          stroke-dasharray="0 596.9" transform="rotate(135 110 130)"/>
+        <text x="16"  y="140" fill="#aaa" font-size="8" font-family="monospace">0</text>
+        <text x="62"  y="46"  fill="#aaa" font-size="8" font-family="monospace">100</text>
+        <text x="148" y="46"  fill="#aaa" font-size="8" font-family="monospace">250</text>
+        <text x="186" y="140" fill="#aaa" font-size="8" font-family="monospace">350</text>
+        <text id="speed" x="110" y="116" text-anchor="middle"
+          font-size="52" font-weight="900" fill="#fff" font-family="monospace">0</text>
+        <text x="110" y="133" text-anchor="middle"
+          font-size="9" fill="#ccc" letter-spacing="3" font-family="monospace">KM/H</text>
       </svg>
-      <div class="tire-slot fr">
-        <span class="tire-lbl">FR</span>
-        <div id="temp-fr-bar" class="tire"></div>
-        <span id="temp-fr" class="tire-val">--</span>
+      <div class="instruments">
+        <div>
+          <div class="instr-label">RPM</div>
+          <svg viewBox="0 0 100 58" style="width:100%;max-width:110px;display:block;margin:0 auto;">
+            <circle cx="50" cy="52" r="40" fill="none" stroke="#1A1A1A" stroke-width="9"
+              stroke-dasharray="125.7 251.3" transform="rotate(180 50 52)"/>
+            <circle id="rpm-bar" cx="50" cy="52" r="40" fill="none" stroke="#E74C3C" stroke-width="9"
+              stroke-linecap="round" stroke-dasharray="0 251.3" transform="rotate(180 50 52)"/>
+            <text id="rpm" x="50" y="46" text-anchor="middle"
+              font-size="13" font-weight="700" fill="#fff" font-family="monospace">0</text>
+            <text x="50" y="56" text-anchor="middle" font-size="6" fill="#ccc" letter-spacing="1" font-family="monospace">RPM</text>
+          </svg>
+        </div>
+        <div>
+          <div class="instr-label">Gear</div>
+          <div class="gear-ring"><span id="gear">N</span></div>
+        </div>
+        <div>
+          <div class="instr-label">Power</div>
+          <svg viewBox="0 0 100 58" style="width:100%;max-width:110px;display:block;margin:0 auto;">
+            <circle cx="50" cy="52" r="40" fill="none" stroke="#1A1A1A" stroke-width="9"
+              stroke-dasharray="125.7 251.3" transform="rotate(180 50 52)"/>
+            <circle id="power-bar" cx="50" cy="52" r="40" fill="none" stroke="#3B82F6" stroke-width="9"
+              stroke-linecap="round" stroke-dasharray="0 251.3" transform="rotate(180 50 52)"/>
+            <text id="power" x="50" y="46" text-anchor="middle"
+              font-size="13" font-weight="700" fill="#fff" font-family="monospace">0</text>
+            <text x="50" y="56" text-anchor="middle" font-size="6" fill="#ccc" letter-spacing="1" font-family="monospace">KW</text>
+          </svg>
+        </div>
       </div>
-      <div class="tire-slot rl">
-        <span class="tire-lbl">RL</span>
-        <div id="temp-rl-bar" class="tire"></div>
-        <span id="temp-rl" class="tire-val">--</span>
+    </div>
+
+    <div class="bottom-row">
+
+      <!-- TIRE TEMPS -->
+      <div class="card">
+        <div class="card-title">Tire Temps</div>
+        <div class="tire-grid">
+          <div class="tire-slot fl">
+            <span class="tire-lbl">FL</span>
+            <div id="temp-fl-bar" class="tire"></div>
+            <span id="temp-fl" class="tire-val">--</span>
+          </div>
+          <svg class="car-body" viewBox="0 0 56 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="6" y="6" width="44" height="98" rx="10" fill="#1A1A1A" stroke="#2A2A2A" stroke-width="1"/>
+            <rect x="12" y="14" width="32" height="22" rx="4" fill="#141414"/>
+            <rect x="14" y="58" width="28" height="18" rx="3" fill="#141414"/>
+          </svg>
+          <div class="tire-slot fr">
+            <span class="tire-lbl">FR</span>
+            <div id="temp-fr-bar" class="tire"></div>
+            <span id="temp-fr" class="tire-val">--</span>
+          </div>
+          <div class="tire-slot rl">
+            <span class="tire-lbl">RL</span>
+            <div id="temp-rl-bar" class="tire"></div>
+            <span id="temp-rl" class="tire-val">--</span>
+          </div>
+          <div></div>
+          <div class="tire-slot rr">
+            <span class="tire-lbl">RR</span>
+            <div id="temp-rr-bar" class="tire"></div>
+            <span id="temp-rr" class="tire-val">--</span>
+          </div>
+        </div>
       </div>
-      <div></div>
-      <div class="tire-slot rr">
-        <span class="tire-lbl">RR</span>
-        <div id="temp-rr-bar" class="tire"></div>
-        <span id="temp-rr" class="tire-val">--</span>
+
+      <!-- DRIVER INPUTS -->
+      <div class="card">
+        <div class="card-title">Driver Inputs</div>
+        <div class="inputs-grid">
+          <div class="input-row">
+            <div class="input-header">
+              <span class="input-lbl">Throttle</span>
+              <span id="throttle" class="input-val" style="color:#27AE60">0%</span>
+            </div>
+            <div class="bar-bg"><div id="throttle-bar" class="bar-fill bar-thr"></div></div>
+          </div>
+          <div class="input-row">
+            <div class="input-header">
+              <span class="input-lbl">Brake</span>
+              <span id="brake" class="input-val" style="color:#E74C3C">0%</span>
+            </div>
+            <div class="bar-bg"><div id="brake-bar" class="bar-fill bar-brk"></div></div>
+          </div>
+          <div class="input-row">
+            <div class="input-header">
+              <span class="input-lbl">Clutch</span>
+              <span id="clutch" class="input-val" style="color:#3B82F6">0%</span>
+            </div>
+            <div class="bar-bg"><div id="clutch-bar" class="bar-fill bar-clt"></div></div>
+          </div>
+          <div class="input-row">
+            <div class="input-header">
+              <span class="input-lbl">Handbrake</span>
+              <span id="handbrake" class="input-val" style="color:#F39C12">0%</span>
+            </div>
+            <div class="bar-bg"><div id="handbrake-bar" class="bar-fill bar-hbk"></div></div>
+          </div>
+        </div>
+        <div class="steer-section">
+          <div class="input-header">
+            <span class="input-lbl">Steering</span>
+            <span id="steer" class="input-val" style="color:#555">0</span>
+          </div>
+          <div class="steer-track">
+            <div class="steer-center"></div>
+            <div id="steer-pip" class="steer-pip"></div>
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
 
-  <!-- INPUTS -->
-  <div class="card">
-    <div class="card-title">Driver Inputs</div>
-    <div class="inputs-grid">
-      <div class="input-row">
-        <div class="input-header">
-          <span class="input-lbl">Throttle</span>
-          <span id="throttle" class="input-val" style="color:#27AE60">0%</span>
+  <!-- RIGHT COLUMN: Race Info (fixed) + Track Map (grows) -->
+  <div class="right-col">
+
+    <!-- RACE INFO -->
+    <div class="card">
+      <div class="card-title">Race Info</div>
+      <div id="lap-time">--:--.---</div>
+      <div id="lap-best">BEST &nbsp;--:--.---</div>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Lap</span>
+          <span id="lap-num" class="info-value">-</span>
         </div>
-        <div class="bar-bg"><div id="throttle-bar" class="bar-fill bar-thr"></div></div>
-      </div>
-      <div class="input-row">
-        <div class="input-header">
-          <span class="input-lbl">Brake</span>
-          <span id="brake" class="input-val" style="color:#E74C3C">0%</span>
+        <div class="info-item">
+          <span class="info-label">Position</span>
+          <span id="position" class="info-value">-</span>
         </div>
-        <div class="bar-bg"><div id="brake-bar" class="bar-fill bar-brk"></div></div>
-      </div>
-      <div class="input-row">
-        <div class="input-header">
-          <span class="input-lbl">Clutch</span>
-          <span id="clutch" class="input-val" style="color:#3B82F6">0%</span>
+        <div class="info-item">
+          <span class="info-label">Fuel</span>
+          <span id="fuel" class="info-value">-</span>
         </div>
-        <div class="bar-bg"><div id="clutch-bar" class="bar-fill bar-clt"></div></div>
-      </div>
-      <div class="input-row">
-        <div class="input-header">
-          <span class="input-lbl">Handbrake</span>
-          <span id="handbrake" class="input-val" style="color:#F39C12">0%</span>
+        <div class="info-item">
+          <span class="info-label">Boost</span>
+          <span id="boost" class="info-value">-</span>
         </div>
-        <div class="bar-bg"><div id="handbrake-bar" class="bar-fill bar-hbk"></div></div>
       </div>
     </div>
-    <div class="steer-section">
-      <div class="input-header">
-        <span class="input-lbl">Steering</span>
-        <span id="steer" class="input-val" style="color:#555">0</span>
-      </div>
-      <div class="steer-track">
-        <div class="steer-center"></div>
-        <div id="steer-pip" class="steer-pip"></div>
-      </div>
+
+    <!-- TRACK MAP -->
+    <div class="card minimap-card" id="minimap-card">
+      <div class="card-title">TRACK MAP <span id="map-status" style="color:#27AE60;font-size:8px;">● LIVE</span></div>
+      <canvas id="minimap-canvas" width="700" height="394"></canvas>
     </div>
+
   </div>
 
-</div>
-
-<!-- MINIMAP -->
-<div class="card minimap-card" id="minimap-card">
-  <div class="card-title">TRACK MAP <span id="map-status" style="color:#27AE60;font-size:8px;">● LIVE</span></div>
-  <canvas id="minimap-canvas" width="700" height="394"></canvas>
-</div>
-
-<!-- SESSION -->
-<div class="card session-bar">
-  <div id="session-info">No active session</div>
-  <div style="display:flex;gap:8px;">
-    <button id="sessions-btn" class="btn btn-secondary">Sessions</button>
-    <button id="export-btn" class="btn btn-primary" disabled>Export</button>
-    <button id="export-compact-btn" class="btn btn-primary" disabled style="background:#1A6B35;">Compact</button>
-  </div>
 </div>
 
 <!-- SESSIONS DRAWER -->
@@ -1740,7 +1774,7 @@ function getDefaultHTML() {
 </script>
 
 <div class="footer">
-  developed by <a href="https://github.com/viunow" target="_blank" rel="noopener noreferrer">@viniciusneto.dev</a>
+  developed by <a href="https://github.com/viunow" target="_blank" rel="noopener noreferrer">@viunow</a>
 </div>
 </body>
 </html>`;

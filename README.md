@@ -1,6 +1,8 @@
-# fh6-telemetry
+# FH6 Telemetry
 
 A UDP telemetry receiver for Forza Horizon 6. It listens for the data the game broadcasts over the network, tracks your sessions and lap times, and serves a live dashboard in the browser.
+
+![FH6 Telemetry Dashboard](assets/screen.png)
 
 ## How it works
 
@@ -16,7 +18,7 @@ You need Node.js 18 or newer.
 npm install
 ```
 
-That's the only dependency (`dgram` for the UDP socket).
+There are no runtime npm dependencies. The app uses only Node.js built-ins (`dgram`, `http`, `fs`). The packages installed are dev-only tools for bundling.
 
 ## Running
 
@@ -24,15 +26,27 @@ That's the only dependency (`dgram` for the UDP socket).
 npm start
 ```
 
-The server starts two listeners:
-
-- UDP on port `20440` — this is where the game sends data
-- HTTP on port `3000` — open this in a browser to see the live dashboard
-
-Both ports can be changed with environment variables:
+For development with auto-reload on file changes:
 
 ```
+npm run dev
+```
+
+The server starts two listeners:
+
+- UDP on port `20440` (game data)
+- HTTP on port `3000` (open in a browser to see the live dashboard)
+
+Both ports can be changed with environment variables.
+
+**Linux/Mac:**
+```
 PORT=20777 HTTP_PORT=8080 npm start
+```
+
+**Windows (PowerShell):**
+```
+$env:PORT=20777; $env:HTTP_PORT=8080; npm start
 ```
 
 ## Quick start
@@ -41,39 +55,46 @@ PORT=20777 HTTP_PORT=8080 npm start
 
 In Forza Horizon 6, go to **Settings > HUD and Gameplay > Telemetry** and set:
 
-| Field | Value |
-|---|---|
-| Data Out | **On** |
-| Data Out IP Address | `127.0.0.1` |
-| Data Out IP Port | `20440` |
+| Field               | Value                                  |
+| ------------------- | -------------------------------------- |
+| Data Out            | **On**                                 |
+| Data Out IP Address | `127.0.0.1` (same PC) or your local IP |
+| Data Out IP Port    | `20440`                                |
+
+If the game is on a console or a different machine on your network, use the local IP of the machine running this tool instead of `127.0.0.1`.
 
 ### 2. Run the app
 
-Double-click the `.exe` file and open in your browser:
+Double-click the `.exe` file (or run `npm start`) and open in your browser:
 
 ```
 http://localhost:3000/
 ```
 
----
-
-## Game configuration
-
-In Forza Horizon 6, go to **Settings > HUD and Gameplay** and enable the **Data Out** option. Set the output IP to the machine running this tool and the port to `20440` (or whatever you set `PORT` to).
-
-If the game is running on the same PC, use `127.0.0.1`. If it's on a console or a different machine on your network, use the local IP of the machine running this tool.
-
 ## Dashboard
 
 Open `http://localhost:3000` in a browser. You'll see:
 
-- Current speed, RPM, gear, and power output
-- Lap time and best lap
-- Tire temperatures per corner (color-coded: green is fine, yellow is getting warm, red is too hot)
-- Throttle, brake, clutch, handbrake, and steering inputs
-- Session info and an export button
+- **Speed & Engine**: speedometer arc, RPM and power gauges, current gear
+- **Tire Temps**: temperature per corner, color-coded (green is fine, yellow is getting warm, red is too hot)
+- **Driver Inputs**: throttle, brake, clutch, handbrake bars and a steering indicator
+- **Race Info**: current lap time, best lap, lap number, position, fuel, boost
+- **Track Map**: live position tracking on the FH6 Japan map, with a trail per lap and a heading arrow
 
-The dashboard only shows data while a session is active (i.e., while the game's race flag is on).
+The header shows the active session ID and has three buttons:
+
+- **Sessions**: opens a drawer listing all saved sessions; click any session to open the viewer
+- **Export**: downloads the full current (or last closed) session as JSON
+- **Compact**: downloads a compact version of the session (see [Compact export](#compact-export))
+
+The dashboard only shows live data while a session is active (i.e., while the game's race flag is on).
+
+### Session viewer
+
+Clicking a session in the Sessions drawer opens a viewer with two tabs:
+
+- **Charts**: speed, RPM, tire temperatures, and driver inputs plotted over the full session, plus a summary bar (max speed, max RPM, max power, best lap)
+- **Replay Map**: the recorded track path color-coded per lap, with a playback slider and play/pause control
 
 ## Sessions
 
@@ -88,20 +109,44 @@ Each file includes:
 - Aggregate stats (max speed, max RPM, max power, average fuel, max boost)
 - The full packet log
 
-You can also export the current active session at any time by hitting the **Export JSON** button in the dashboard, or by hitting `GET /export` directly.
+You can also export the current active session at any time by hitting the **Export** button in the dashboard, or by calling `GET /export` directly. If no session is active, the endpoint returns the last closed session.
+
+## Compact export
+
+`GET /export-compact` returns a smaller structured file instead of the raw packet log. It contains four sections:
+
+| Section    | Description                                                                                                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `summary`  | Single-record stats: max speed, max RPM, max power, max torque, max boost, max lateral/longitudinal G, average fuel, best lap, duration                                  |
+| `lapStats` | Array of `{ lapNumber, lapTime }` for each recorded lap                                                                                                                  |
+| `sectors`  | 10 equal-time sectors per lap, each with avg/max speed, avg/max RPM, avg throttle/brake %, avg G forces, avg tire temps per corner, avg boost, avg power                 |
+| `samples`  | Downsampled packet data at ~1 sample/second (30:1 ratio): speed, RPM, power, torque, throttle, brake, gear, G forces, tire temps, boost, fuel, lap number, race position |
 
 ## HTTP endpoints
 
-| Endpoint      | Description                                      |
-| ------------- | ------------------------------------------------ |
-| `GET /`       | Live dashboard                                   |
-| `GET /events` | SSE stream of raw telemetry packets              |
-| `GET /status` | JSON with current session state and client count |
-| `GET /export` | Download the current session as JSON             |
+| Endpoint              | Description                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| `GET /`               | Live dashboard                                                                                           |
+| `GET /events`         | SSE stream of raw telemetry packets                                                                      |
+| `GET /status`         | JSON with current session state and SSE client count                                                     |
+| `GET /export`         | Download the current (or last closed) session as JSON. Accepts `?downsample=N` to keep every Nth packet. |
+| `GET /export-compact` | Download a compact session summary with sectors and downsampled samples                                  |
+| `GET /sessions`       | JSON array listing all saved sessions (metadata only, no packet data)                                    |
+| `GET /session?id=N`   | JSON with the full saved session for the given ID                                                        |
 
 ## Rewind handling
 
 The session manager handles the game's rewind feature. If the race state drops and comes back within 30 seconds at a lower race time than where it left off, it treats that as a rewind rather than a new session and continues recording into the same file.
+
+## Building the executable
+
+To produce a standalone `fh6-telemetry.exe` that runs without Node.js installed:
+
+```
+npm run build
+```
+
+This bundles the source with esbuild and then uses Node.js SEA (Single Executable Application) to inject the bundle into a copy of the Node binary. The output is written to `dist/fh6-telemetry.exe`.
 
 ## Data fields
 
@@ -111,7 +156,7 @@ Every packet contains:
 - Motion: speed (m/s and km/h), velocity (XYZ), acceleration (XYZ), position (XYZ), yaw/pitch/roll
 - Tires: temperature (Celsius), slip ratio, slip angle, wear (if available in the packet)
 - Suspension travel per corner
-- Inputs: throttle, brake, clutch, handbrake (0-255), gear, steering (-127 to 127)
+- Inputs: throttle, brake, clutch, handbrake (0–255), gear, steering (–127 to 127)
 - Race: current lap time, best lap, last lap, race time, lap number, race position
 - Car: ordinal ID, class, performance index (PI), drivetrain type
 - Fuel level
