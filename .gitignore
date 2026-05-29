@@ -2,3 +2,4 @@ node_modules/
 sessions/
 .claude
 .docs
+dist/
