@@ -4,14 +4,31 @@
   "description": "Forza Horizon 6 UDP Telemetry Capture",
   "main": "src/parser.js",
   "type": "module",
+  "bin": "dist/index.cjs",
   "scripts": {
     "start": "node src/index.js",
-    "capture": "node src/index.js"
+    "dev": "nodemon --watch src src/index.js",
+    "bundle": "node build.js",
+    "build": "npm run bundle && node --experimental-sea-config sea-config.json && npx postject dist/fh6-telemetry.exe NODE_SEA_BLOB dist/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
+    "build-win": "npm run bundle && node --experimental-sea-config sea-config.json && npx postject dist/fh6-telemetry.exe NODE_SEA_BLOB dist/sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2"
   },
-  "keywords": ["forza", "telemetry", "udp"],
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ]
+  },
+  "keywords": [
+    "forza",
+    "telemetry",
+    "udp"
+  ],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "dgram": "latest"
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.20.0",
+    "esbuild": "^0.28.0",
+    "nexe": "^5.0.0-beta.4",
+    "nodemon": "^3.1.14",
+    "postject": "^1.0.0-alpha.6"
   }
 }

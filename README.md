@@ -35,6 +35,28 @@ Both ports can be changed with environment variables:
 PORT=20777 HTTP_PORT=8080 npm start
 ```
 
+## Quick start
+
+### 1. Configure the game
+
+In Forza Horizon 6, go to **Settings > HUD and Gameplay > Telemetry** and set:
+
+| Field | Value |
+|---|---|
+| Data Out | **On** |
+| Data Out IP Address | `127.0.0.1` |
+| Data Out IP Port | `20440` |
+
+### 2. Run the app
+
+Double-click the `.exe` file and open in your browser:
+
+```
+http://localhost:3000/
+```
+
+---
+
 ## Game configuration
 
 In Forza Horizon 6, go to **Settings > HUD and Gameplay** and enable the **Data Out** option. Set the output IP to the machine running this tool and the port to `20440` (or whatever you set `PORT` to).
