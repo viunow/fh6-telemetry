@@ -129,10 +129,42 @@ You can also export the current active session at any time by hitting the **Expo
 | `GET /`               | Live dashboard                                                                                           |
 | `GET /events`         | SSE stream of raw telemetry packets                                                                      |
 | `GET /status`         | JSON with current session state and SSE client count                                                     |
+| `GET /debug`          | Diagnostic info — see below                                                                              |
 | `GET /export`         | Download the current (or last closed) session as JSON. Accepts `?downsample=N` to keep every Nth packet. |
 | `GET /export-compact` | Download a compact session summary with sectors and downsampled samples                                  |
 | `GET /sessions`       | JSON array listing all saved sessions (metadata only, no packet data)                                    |
 | `GET /session?id=N`   | JSON with the full saved session for the given ID                                                        |
+
+### /debug
+
+`GET /debug` returns a JSON snapshot useful for troubleshooting when no data appears in the dashboard:
+
+```json
+{
+  "udpPort": 20440,
+  "httpPort": 3000,
+  "packetsTotal": 4312,
+  "parseErrors": 0,
+  "lastParseError": null,
+  "lastParseErrorAgoMs": null,
+  "lastPacketAgoMs": 120,
+  "lastPacketMs": 1748555032481,
+  "sseClients": 1,
+  "sessionActive": true,
+  "sessionId": 3,
+  "currentSessionPackets": 1850,
+  "currentSessionLaps": 2,
+  "uptimeMs": 95400
+}
+```
+
+| Field                | What to look for                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------- |
+| `packetsTotal`       | If this stays at `0` with the game running, UDP packets aren't arriving — check port and IP in game settings |
+| `parseErrors`        | If this is climbing, packets are arriving but failing to parse — likely a packet size or format issue |
+| `lastParseError`     | The error message from the most recent failed parse                                                 |
+| `lastPacketAgoMs`    | Milliseconds since the last successfully parsed packet was broadcast; `null` means none yet received |
+| `sseClients`         | Number of browser tabs connected to the SSE stream                                                  |
 
 ## Rewind handling
 
