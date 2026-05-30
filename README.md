@@ -79,15 +79,32 @@ Open `http://localhost:3000` in a browser. You'll see:
 - **Tire Temps**: temperature per corner, color-coded (green is fine, yellow is getting warm, red is too hot)
 - **Driver Inputs**: throttle, brake, clutch, handbrake bars and a steering indicator
 - **Race Info**: current lap time, best lap, lap number, position, fuel, boost
-- **Track Map**: live position tracking on the FH6 Japan map, with a trail per lap and a heading arrow
+- **Track Map**: live position tracking on the FH6 Japan map, with a trail per lap and a heading arrow *(Race mode only)*
 
-The header shows the active session ID and has three buttons:
+The header shows the active session ID and has the following controls:
 
+- **[ Race | Free Roam ]**: drive mode toggle — see [Drive modes](#drive-modes) below
+- **● Rec / ■ Stop**: appears in Free Roam mode; manually starts or stops session recording
 - **Sessions**: opens a drawer listing all saved sessions; click any session to open the viewer
 - **Export**: downloads the full current (or last closed) session as JSON
 - **Compact**: downloads a compact version of the session (see [Compact export](#compact-export))
 
-The dashboard only shows live data while a session is active (i.e., while the game's race flag is on).
+The gauges update in real time as long as UDP packets are arriving from the game, regardless of mode.
+
+## Drive modes
+
+The **[ Race | Free Roam ]** segmented control in the top-right switches how the dashboard behaves:
+
+| | Race (default) | Free Roam |
+|---|---|---|
+| Gauges | ✓ | ✓ |
+| Track map | ✓ | — |
+| Session recording | Automatic | Manual (● Rec button) |
+| Recording trigger | Race flag on + event active | `isRaceOn` flag |
+
+**Race mode** is the full experience. Sessions open and close automatically based on the game's race flag — the same as the original behavior.
+
+**Free Roam mode** hides the track map and disables automatic recording. The **● Rec** button lets you start recording a session manually (useful for a quick test drive you want to analyze later). Click **■ Stop** to end the recording. The session is saved to disk and the Export buttons become available, just like after a race session. The recording pauses naturally when you enter the pause menu (the game stops sending the `isRaceOn` flag).
 
 ### Session viewer
 
@@ -124,16 +141,19 @@ You can also export the current active session at any time by hitting the **Expo
 
 ## HTTP endpoints
 
-| Endpoint              | Description                                                                                              |
-| --------------------- | -------------------------------------------------------------------------------------------------------- |
-| `GET /`               | Live dashboard                                                                                           |
-| `GET /events`         | SSE stream of raw telemetry packets                                                                      |
-| `GET /status`         | JSON with current session state and SSE client count                                                     |
-| `GET /debug`          | Diagnostic info — see below                                                                              |
-| `GET /export`         | Download the current (or last closed) session as JSON. Accepts `?downsample=N` to keep every Nth packet. |
-| `GET /export-compact` | Download a compact session summary with sectors and downsampled samples                                  |
-| `GET /sessions`       | JSON array listing all saved sessions (metadata only, no packet data)                                    |
-| `GET /session?id=N`   | JSON with the full saved session for the given ID                                                        |
+| Endpoint                       | Description                                                                                              |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `GET /`                        | Live dashboard                                                                                           |
+| `GET /events`                  | SSE stream of raw telemetry packets                                                                      |
+| `GET /status`                  | JSON with current session state and SSE client count                                                     |
+| `GET /debug`                   | Diagnostic info — see below                                                                              |
+| `GET /export`                  | Download the current (or last closed) session as JSON. Accepts `?downsample=N` to keep every Nth packet. |
+| `GET /export-compact`          | Download a compact session summary with sectors and downsampled samples                                  |
+| `GET /sessions`                | JSON array listing all saved sessions (metadata only, no packet data)                                    |
+| `GET /session?id=N`            | JSON with the full saved session for the given ID                                                        |
+| `GET /mode`                    | Returns current drive mode state: `{ driveMode, freeRoamRecording }`                                    |
+| `POST /mode`                   | Sets drive mode. Body: `{ "driveMode": "race" \| "freeRoam" }`. Resets recording state on mode switch.  |
+| `POST /free-roam-recording`    | Toggles Free Roam recording. Body: `{ "recording": true \| false }`. Returns 409 if not in Free Roam.   |
 
 ### /debug
 

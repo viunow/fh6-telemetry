@@ -26,6 +26,13 @@ let lastClosedSessionData = null;
 
 let sseClients = new Set();
 
+let driveMode = 'race';
+let freeRoamRecording = false;
+
+let prevInEvent = false;
+let closePending = 0;
+const CLOSE_GRACE = 150;
+
 // Diagnostics
 let diagPacketsTotal = 0;
 let diagParseErrors = 0;
@@ -447,9 +454,6 @@ async function startUDP() {
       server.close();
     });
 
-    let prevInEvent = false;
-    let closePending = 0;
-    const CLOSE_GRACE = 150;
 
     server.on("message", (msg, rinfo) => {
       diagPacketsTotal++;
@@ -460,7 +464,9 @@ async function startUDP() {
         broadcastToSSE(json);
 
         const timedLap = pkt.currentLap > 0.0;
-        const rawInEvent = pkt.isRaceOn && (pkt.racePosition > 0 || timedLap);
+        const rawInEvent = driveMode === 'race'
+          ? pkt.isRaceOn && (pkt.racePosition > 0 || timedLap)
+          : freeRoamRecording && pkt.isRaceOn;
         if (rawInEvent) {
           closePending = 0;
         } else {
@@ -772,6 +778,69 @@ async function startHTTP() {
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: e.message }));
       }
+      return;
+    }
+
+    if (req.url === "/mode" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ driveMode, freeRoamRecording }));
+      return;
+    }
+
+    if (req.url === "/mode" && req.method === "POST") {
+      let body = "";
+      req.on("data", (chunk) => { body += chunk; });
+      req.on("end", () => {
+        try {
+          const payload = JSON.parse(body);
+          const newMode = payload.driveMode;
+          if (newMode !== "race" && newMode !== "freeRoam") {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Invalid driveMode" }));
+            return;
+          }
+          if (newMode !== driveMode) {
+            if (currentSession) {
+              prevInEvent = true;
+              closePending = CLOSE_GRACE;
+            }
+            driveMode = newMode;
+            freeRoamRecording = false;
+          }
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ driveMode, freeRoamRecording }));
+        } catch (e) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Bad JSON" }));
+        }
+      });
+      return;
+    }
+
+    if (req.url === "/free-roam-recording" && req.method === "POST") {
+      let body = "";
+      req.on("data", (chunk) => { body += chunk; });
+      req.on("end", () => {
+        try {
+          if (driveMode !== "freeRoam") {
+            res.writeHead(409, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Only valid in freeRoam mode" }));
+            return;
+          }
+          const payload = JSON.parse(body);
+          const enable = !!payload.recording;
+          if (!enable && freeRoamRecording && currentSession) {
+            prevInEvent = true;
+            closePending = CLOSE_GRACE;
+          }
+          freeRoamRecording = enable;
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ driveMode, freeRoamRecording }));
+        } catch (e) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Bad JSON" }));
+        }
+      });
       return;
     }
 
@@ -1160,6 +1229,13 @@ function getDefaultHTML() {
       background: #1A1A1A; color: #888; border: 1px solid #2A2A2A;
     }
     .btn-secondary:hover { background: #222; color: #fff; }
+    .mode-seg { display:flex; background:#0D0D0D; border:1px solid #2A2A2A; border-radius:4px; overflow:hidden; }
+    .mode-seg-btn { padding:6px 14px; font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; border:none; background:transparent; color:#555; cursor:pointer; font-family:inherit; transition:background 0.15s,color 0.15s; }
+    .mode-seg-btn:hover { color:#888; }
+    .mode-seg-btn.seg-active { background:#C0392B; color:#fff; }
+    #free-roam-rec-btn { display:none; padding:6px 14px; font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; border:1px solid #2A2A2A; border-radius:4px; cursor:pointer; font-family:inherit; background:#1A1A1A; color:#888; transition:background 0.15s,color 0.15s; }
+    #free-roam-rec-btn.recording { background:#C0392B; color:#fff; border-color:#C0392B; animation:rec-pulse 1.4s ease-in-out infinite; }
+    @keyframes rec-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(192,57,43,0.5)} 50%{box-shadow:0 0 0 5px rgba(192,57,43,0)} }
   </style>
 </head>
 <body>
@@ -1179,6 +1255,11 @@ function getDefaultHTML() {
     <div id="session-info">No active session</div>
   </div>
   <div class="header-right">
+    <div class="mode-seg">
+      <button class="mode-seg-btn seg-active" id="mode-race-btn" data-mode="race">Race</button>
+      <button class="mode-seg-btn" id="mode-freeroam-btn" data-mode="freeRoam">Free Roam</button>
+    </div>
+    <button id="free-roam-rec-btn">&#11044; Rec</button>
     <button id="sessions-btn" class="btn btn-secondary">Sessions</button>
     <button id="export-btn" class="btn btn-primary" disabled>Export</button>
     <button id="export-compact-btn" class="btn btn-primary" disabled style="background:#1A6B35;">Compact</button>
@@ -1516,6 +1597,7 @@ function getDefaultHTML() {
   }
 
   function updateMapTrail(d) {
+    if (clientDriveMode === 'freeRoam') return;
     if (!mapCtx || (!d.positionX && !d.positionZ)) return;
     if (d.isRaceOn && !prevRaceOn) { liveTrail = []; frameCount = 0; }
     prevRaceOn = d.isRaceOn;
@@ -1782,6 +1864,68 @@ function getDefaultHTML() {
   }
 
   noDataWarnTimer = setInterval(checkNoData, 2000);
+
+  // ── Drive Mode ───────────────────────────────────────────────────
+  var clientDriveMode = 'race';
+  var clientFreeRoamRecording = false;
+
+  function applyMode(mode) {
+    clientDriveMode = mode;
+    document.getElementById('mode-race-btn').classList.toggle('seg-active', mode === 'race');
+    document.getElementById('mode-freeroam-btn').classList.toggle('seg-active', mode === 'freeRoam');
+    var mapCard = document.getElementById('minimap-card');
+    if (mapCard) mapCard.style.display = mode === 'race' ? '' : 'none';
+    var recBtn = document.getElementById('free-roam-rec-btn');
+    recBtn.style.display = mode === 'freeRoam' ? '' : 'none';
+    if (mode === 'race') {
+      clientFreeRoamRecording = false;
+      recBtn.textContent = '● Rec';
+      recBtn.classList.remove('recording');
+    }
+  }
+
+  function applyRecordingState(recording) {
+    clientFreeRoamRecording = recording;
+    var recBtn = document.getElementById('free-roam-rec-btn');
+    if (recording) {
+      recBtn.textContent = '■ Stop';
+      recBtn.classList.add('recording');
+    } else {
+      recBtn.textContent = '● Rec';
+      recBtn.classList.remove('recording');
+    }
+  }
+
+  document.querySelectorAll('.mode-seg-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var newMode = btn.dataset.mode;
+      if (newMode === clientDriveMode) return;
+      fetch('/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driveMode: newMode })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        applyMode(data.driveMode);
+        applyRecordingState(data.freeRoamRecording);
+      }).catch(function(err) { console.error('Mode switch failed:', err); });
+    });
+  });
+
+  document.getElementById('free-roam-rec-btn').addEventListener('click', function() {
+    var newRecording = !clientFreeRoamRecording;
+    fetch('/free-roam-recording', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recording: newRecording })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      applyRecordingState(data.freeRoamRecording);
+    }).catch(function(err) { console.error('Recording toggle failed:', err); });
+  });
+
+  fetch('/mode').then(function(r) { return r.json(); }).then(function(data) {
+    applyMode(data.driveMode);
+    applyRecordingState(data.freeRoamRecording);
+  }).catch(function() { applyMode('race'); });
 
   // ── Hook minimap into SSE ─────────────────────────────────────────
   connectSSE();
